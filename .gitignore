@@ -1,0 +1,44 @@
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?
+
+# Node & Frontend
+node_modules/
+.npm/
+dist/
+tmp/
+out-tsc/
+bazel-out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.angular/cache/
+.sass-cache/
+coverage/
+
+# .NET & Backend build artifacts
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vs/
+TestResults/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local / Scratch directories
+scratch/
+Library/
+.dotnet/
+.local/
