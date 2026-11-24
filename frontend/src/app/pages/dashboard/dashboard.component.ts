@@ -14,7 +14,7 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-dashboard">
       <app-header />
       <main class="main-content">
 
@@ -34,10 +34,9 @@ import { ToastService } from '../../services/toast.service';
           </div>
 
           <div class="top-bar-actions">
-            <a routerLink="/quotation-maker" target="_blank" class="btn-primary-action" title="Create a new quotation in a new tab">
+            <a routerLink="/quotation-maker" class="btn-primary-action" target="_blank" rel="noopener" title="Create a new quotation">
               <span class="btn-action-icon">✨</span>
               <span>Create Quotation</span>
-              <span class="btn-action-badge">New Tab ↗</span>
             </a>
 
             <a routerLink="/calculation" class="btn btn-secondary btn-calc-action">
@@ -123,7 +122,7 @@ import { ToastService } from '../../services/toast.service';
             </div>
 
             <!-- Metric 4: Outstanding Receivables -->
-            <div class="metric-card">
+            <div class="metric-card outstanding-card" [class.filter-active]="showOutstandingOnly" role="button" tabindex="0" (click)="toggleOutstandingFilter()" (keydown.enter)="toggleOutstandingFilter()" title="Click to show only approved quotations with a pending balance">
               <div class="metric-top">
                 <span class="metric-label">Outstanding Balance</span>
                 <span class="metric-icon-badge amber-badge">⏳</span>
@@ -132,6 +131,7 @@ import { ToastService } from '../../services/toast.service';
                 <div class="metric-value font-mono" [class.danger]="data.totalPendingPayments > 0" [class.green]="data.totalPendingPayments === 0">
                   ₹{{ data.totalPendingPayments | number:'1.0-0' }}
                 </div>
+                <span class="filter-active-pill" *ngIf="showOutstandingOnly">Filter Active</span>
               </div>
               <div class="metric-subtext">
                 <span *ngIf="data.totalAdvanceReceived > 0">Advance received: ₹{{ data.totalAdvanceReceived | number:'1.0-0' }}</span>
@@ -146,11 +146,11 @@ import { ToastService } from '../../services/toast.service';
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- 3. RECENT QUOTATIONS TABLE & SEARCH -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
-          <div class="dash-section">
+          <div class="dash-section" id="recent-quotations">
             <div class="section-header-bar">
               <div>
                 <h2 class="section-heading">Recent Quotations</h2>
-                <span class="section-subheading">Preview, download styled PDF, or share directly via WhatsApp</span>
+                <span class="section-subheading">{{ showOutstandingOnly ? 'Approved quotations with a pending balance' : 'Preview, download styled PDF, or share directly via WhatsApp' }}</span>
               </div>
 
               <div class="section-header-right">
@@ -172,12 +172,23 @@ import { ToastService } from '../../services/toast.service';
               </div>
             </div>
 
+            <!-- Active Filter Banner for Outstanding Balance -->
+            <div class="filter-status-banner" *ngIf="showOutstandingOnly">
+              <div class="filter-status-left">
+                <span class="filter-status-dot"></span>
+                <span>Filtered by: <strong>Approved Quotations with Pending Balance</strong> ({{ filteredQuotations.length }} found)</span>
+              </div>
+              <button type="button" class="btn-clear-filter" (click)="showOutstandingOnly = false">
+                ✕ Show All Quotations
+              </button>
+            </div>
+
             <div class="table-card">
               <div *ngIf="filteredQuotations.length === 0" class="empty-state">
                 <div class="empty-icon">📋</div>
-                <div class="empty-text">{{ searchQuery ? 'No matching quotations found' : 'No quotations created yet' }}</div>
-                <a routerLink="/quotation-maker" target="_blank" class="btn btn-primary btn-sm" style="margin-top:12px;">
-                  ✨ Create Quotation ↗
+                <div class="empty-text">{{ showOutstandingOnly ? 'No approved quotations currently have a pending balance' : (searchQuery ? 'No matching quotations found' : 'No quotations created yet') }}</div>
+                <a routerLink="/quotation-maker" class="btn btn-primary btn-sm" target="_blank" rel="noopener" style="margin-top:12px;">
+                  ✨ Create Quotation
                 </a>
               </div>
 
@@ -189,6 +200,7 @@ import { ToastService } from '../../services/toast.service';
                       <th>Customer Details</th>
                       <th>Date</th>
                       <th class="text-right">Net Amount</th>
+                      <th class="text-right" *ngIf="showOutstandingOnly">Balance Due</th>
                       <th class="text-center">Status</th>
                       <th class="text-right">Actions</th>
                     </tr>
@@ -215,9 +227,10 @@ import { ToastService } from '../../services/toast.service';
                       <td class="text-right font-mono font-bold q-amt">
                         ₹{{ (q.finalAmount || q.totalFinalAmount) | number:'1.2-2' }}
                       </td>
+                      <td class="text-right font-mono font-bold q-amt" *ngIf="showOutstandingOnly">₹{{ q.totalBalance | number:'1.2-2' }}</td>
                       <td class="text-center">
                         <span [class]="'badge badge-' + (q.quotationStatus || 'approved').toLowerCase()">
-                          {{ q.quotationStatus || 'Approved' }}
+                          {{ q.quotationStatus || 'Pending' }}
                         </span>
                       </td>
                       <td class="text-right">
@@ -231,8 +244,8 @@ import { ToastService } from '../../services/toast.service';
                           <button type="button" class="btn btn-whatsapp btn-xs" (click)="shareQuotationWhatsApp(q)" title="Share PDF via WhatsApp">
                             💬 WhatsApp
                           </button>
-                          <a [routerLink]="['/quotation-maker', q.id]" target="_blank" class="btn btn-primary btn-xs" title="Edit in Quotation Maker (New Tab)">
-                            Edit ↗
+                          <a [routerLink]="['/quotation-maker', q.id]" class="btn btn-primary btn-xs" target="_blank" rel="noopener" title="Edit quotation">
+                            Edit
                           </a>
                         </div>
                       </td>
@@ -368,45 +381,47 @@ import { ToastService } from '../../services/toast.service';
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 24px;
+      margin-bottom: 30px;
       gap: 20px;
       flex-wrap: wrap;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 20px 24px;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(118deg, #1d1d1f 0%, #29292f 66%, #3a3438 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 28px;
+      padding: 30px 32px;
+      box-shadow: 0 18px 44px rgba(29, 29, 31, 0.14), inset 0 1px 0 rgba(255,255,255,.06);
     }
     .date-chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 3px 10px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.12);
       border-radius: 9999px;
       font-size: 0.74rem;
       font-weight: 600;
-      color: #475569;
+      color: rgba(255,255,255,.76);
       margin-bottom: 8px;
     }
     .chip-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #10b981;
+      background: #0071e3;
     }
-    .chip-sep { color: #cbd5e1; font-weight: bold; }
+    .chip-sep { color: rgba(255,255,255,.42); font-weight: bold; }
     .page-title {
-      font-size: 1.6rem;
-      font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -0.025em;
+      font-size: 2.35rem;
+      font-weight: 700;
+      color: #f5f5f7;
+      letter-spacing: -0.045em;
       line-height: 1.2;
     }
     .page-desc {
       font-size: 0.84rem;
-      color: #64748b;
+      color: rgba(255,255,255,.68);
       margin-top: 4px;
     }
 
@@ -420,20 +435,20 @@ import { ToastService } from '../../services/toast.service';
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+      background: #0071e3;
       color: #ffffff;
-      font-weight: 800;
+      font-weight: 600;
       font-size: 0.88rem;
       padding: 9px 16px;
-      border-radius: 9px;
+      border-radius: 999px;
       text-decoration: none;
-      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
-      border: 1px solid #3730a3;
+      box-shadow: none;
+      border: 1px solid #0071e3;
       transition: all 0.18s ease;
     }
     .btn-primary-action:hover {
-      background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+      background: #0077ed;
+      box-shadow: 0 4px 14px rgba(0, 113, 227, 0.2);
       transform: translateY(-1px);
     }
     .btn-action-icon { font-size: 1rem; }
@@ -459,23 +474,92 @@ import { ToastService } from '../../services/toast.service';
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 30px;
+      gap: 18px;
+      margin-bottom: 36px;
     }
     .metric-card {
       background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 18px 20px;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      border: 1px solid transparent;
+      border-radius: 20px;
+      padding: 22px 22px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.035);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       transition: transform 0.18s, box-shadow 0.18s;
     }
     .metric-card:hover {
-      box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.09);
       transform: translateY(-1.5px);
+    }
+    .outstanding-card { cursor: pointer; border-color: #fde68a; }
+    .outstanding-card:hover {
+      box-shadow: 0 6px 16px -2px rgba(245, 158, 11, 0.15);
+      border-color: #f59e0b;
+      transform: translateY(-2px);
+    }
+    .outstanding-card.filter-active {
+      border-color: #d97706;
+      background: linear-gradient(180deg, #fffdfa 0%, #fef3c7 100%);
+      box-shadow: 0 4px 16px rgba(217, 119, 6, 0.22);
+      transform: translateY(-2px);
+    }
+    .outstanding-card:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+    .filter-active-pill {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #92400e;
+      background: #fde68a;
+      border: 1px solid #f59e0b;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      letter-spacing: 0.02em;
+    }
+    .filter-status-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fffbeb;
+      border: 1.5px solid #fcd34d;
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      color: #92400e;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .filter-status-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d97706;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.8; }
+    }
+    .btn-clear-filter {
+      background: #ffffff;
+      border: 1px solid #f59e0b;
+      color: #b45309;
+      font-weight: 700;
+      font-size: 0.76rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-clear-filter:hover {
+      background: #fef3c7;
+      color: #78350f;
     }
     .metric-top {
       display: flex;
@@ -863,18 +947,35 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  showOutstandingOnly = false;
+
+  toggleOutstandingFilter() {
+    this.showOutstandingOnly = !this.showOutstandingOnly;
+    this.scrollToQuotationList();
+  }
+
   get filteredQuotations(): any[] {
-    if (!this.searchQuery || !this.searchQuery.trim()) {
-      return this.recentQuotations.slice(0, 8);
-    }
+    let quotations = this.showOutstandingOnly
+      ? this.recentQuotations.filter(item => {
+          const status = (item.quotationStatus || '').toLowerCase().trim();
+          const balance = Number(item.totalBalance ?? item.balance ?? 0);
+          // Strictly include only approved quotations that still have a pending balance
+          return (status === 'accepted' || status === 'approved') && balance > 0;
+        })
+      : this.recentQuotations;
+    if (!this.searchQuery || !this.searchQuery.trim()) return this.showOutstandingOnly ? quotations : quotations.slice(0, 8);
     const q = this.searchQuery.toLowerCase().trim();
-    return this.recentQuotations.filter(item => {
+    return quotations.filter(item => {
       const num = (item.quotationNumber || '').toLowerCase();
       const name = (item.customerName || '').toLowerCase();
       const phone = (item.customerContactNumber || '').toLowerCase();
       const title = (item.title || '').toLowerCase();
       return num.includes(q) || name.includes(q) || phone.includes(q) || title.includes(q);
     });
+  }
+
+  scrollToQuotationList() {
+    setTimeout(() => document.getElementById('recent-quotations')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
   getGreeting(): string {
@@ -919,7 +1020,7 @@ export class DashboardComponent implements OnInit {
       totalProductAdvance: 0,
       totalAdvance: q.advancePayment || 0,
       totalBalance: q.totalBalance || 0,
-      quotationStatus: q.quotationStatus || 'Approved',
+      quotationStatus: q.quotationStatus || 'Pending',
       paymentStatus: (q.totalBalance || 0) <= 0 ? 'Full payment cleared' : 'Pending'
     };
 

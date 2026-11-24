@@ -35,6 +35,10 @@ export class ApiService {
   getNextQuotationNumber() { return this.http.get<{ quotationNumber: string }>(`${this.api}/quotations/next-number`); }
   createQuotation(data: any) { return this.http.post<Quotation>(`${this.api}/quotations`, data); }
   updateQuotation(id: number, data: any) { return this.http.put(`${this.api}/quotations/${id}`, data); }
+  updateQuotationStatus(id: number, status: string) { return this.http.patch(`${this.api}/quotations/${id}/status`, { status }); }
+  updateQuotationAdvance(id: number, amount: number) { return this.http.patch(`${this.api}/quotations/${id}/advance`, { amount, date: new Date().toISOString() }); }
+  updateQuotationDiscount(id: number, amount: number) { return this.http.patch(`${this.api}/quotations/${id}/discount`, { amount }); }
+  updateQuotationPaymentStatus(id: number, status: string) { return this.http.patch(`${this.api}/quotations/${id}/payment-status`, { status }); }
   deleteQuotation(id: number) { return this.http.delete(`${this.api}/quotations/${id}`); }
 
   getProducts(filters?: any) {
@@ -63,6 +67,9 @@ export class ApiService {
   }
   saveParticular(data: { particular: string; defaultUnit?: string; defaultRate?: number }) {
     return this.http.post<import('../models/models').SavedParticular>(`${this.api}/particulars`, data);
+  }
+  updateParticular(id: number, data: { particular: string; defaultUnit: string; defaultRate: number }) {
+    return this.http.put<import('../models/models').SavedParticular>(`${this.api}/particulars/${id}`, data);
   }
   deleteParticular(id: number) {
     return this.http.delete(`${this.api}/particulars/${id}`);

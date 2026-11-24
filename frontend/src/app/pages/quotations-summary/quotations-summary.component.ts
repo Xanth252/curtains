@@ -12,7 +12,7 @@ import { isRomanBlind, isOtherBlind, isBlind } from '../calculation/curtain-calc
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-quotes">
       <app-header />
       <main class="main-content">
 
@@ -24,7 +24,7 @@ import { isRomanBlind, isOtherBlind, isBlind } from '../calculation/curtain-calc
             <p class="pg-sub">All client proposals grouped chronologically by month · Click any quotation to open full details</p>
           </div>
           <div class="header-actions">
-            <a routerLink="/quotation-maker" class="btn btn-primary">
+            <a routerLink="/quotation-maker" class="btn btn-primary" target="_blank" rel="noopener">
               <span>🧾</span>
               <span>New Quotation</span>
             </a>

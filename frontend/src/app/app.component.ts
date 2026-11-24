@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ToastService } from './services/toast.service';
@@ -8,7 +8,7 @@ import { ToastService } from './services/toast.service';
   standalone: true,
   imports: [RouterOutlet, CommonModule],
   template: `
-    <router-outlet />
+    <router-outlet (activate)="onRouteActivate()" />
     
     <!-- Global Interactive Toast Container -->
     <div class="toast-container" aria-live="polite" aria-atomic="true">
@@ -101,6 +101,59 @@ import { ToastService } from './services/toast.service';
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
+  private revealObserver?: IntersectionObserver;
+  private contentObserver?: MutationObserver;
+
   constructor(public toastService: ToastService) {}
+
+  onRouteActivate(): void {
+    this.revealObserver?.disconnect();
+    this.contentObserver?.disconnect();
+    requestAnimationFrame(() => {
+      const selector = [
+        '.login-page', '.login-card', '.login-logo-wrap', '.cd-header',
+        '.dash-top-bar', '.metric-card', '.dash-section', '.page-header',
+        '.card-grid > *', '.table-card', '.report-card', '.monthly-card',
+        '.cust-card', '.product-card', '.quotation-card', '.step-card',
+        '.room-block-card', '.info-card', '.empty-card', '.q-kpi-card',
+        '.q-product-card', '.kpi-mini-card', '.summary-card', '.biz-bar-card',
+        '.calc-page-header', '.qm-top-header', '.section-header', '.section-top-title',
+        '.settings-card', '.customer-card', '.filter-card',
+        '.cust-result-card', '.amount-words-card', '.calc-box-card',
+        '.bank-inputs-card', '.terms-inputs-card'
+      ].join(',');
+
+      if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll<HTMLElement>(selector).forEach(item => item.classList.add('scroll-visible'));
+        return;
+      }
+
+      this.revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            (entry.target as HTMLElement).classList.add('scroll-visible');
+            this.revealObserver?.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0, rootMargin: '0px 0px -36px 0px' });
+
+      const revealNewItems = () => {
+        document.querySelectorAll<HTMLElement>(selector).forEach((item, index) => {
+          if (item.classList.contains('scroll-observed')) return;
+          item.classList.add('scroll-reveal', 'scroll-observed');
+          item.style.setProperty('--reveal-delay', `${Math.min(index % 4, 3) * 65}ms`);
+          this.revealObserver?.observe(item);
+        });
+      };
+      revealNewItems();
+      this.contentObserver = new MutationObserver(revealNewItems);
+      this.contentObserver.observe(document.querySelector('router-outlet')?.parentElement ?? document.body, { childList: true, subtree: true });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.revealObserver?.disconnect();
+    this.contentObserver?.disconnect();
+  }
 }

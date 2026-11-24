@@ -40,7 +40,7 @@ interface Room {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-calculation">
       <app-header />
       <main class="main-content">
 
@@ -874,6 +874,12 @@ interface Room {
                 <div class="kpi-mini-sub">{{ roomsWithWindowsCount() }} room{{ roomsWithWindowsCount() !== 1 ? 's' : '' }} · Double window = 1 window</div>
               </div>
 
+              <div class="kpi-mini-card highlight-curtain" *ngIf="totalPanelsCount() > 0">
+                <div class="kpi-mini-lbl">Total Curtain Panels</div>
+                <div class="kpi-mini-val">{{ totalPanelsCount() }} <span class="unit-sm">panels</span></div>
+                <div class="kpi-mini-sub">Includes main and sheer panels</div>
+              </div>
+
               <div class="kpi-mini-card" style="background:#fffbeb; border-color:#fcd34d;" *ngIf="grandTotalWallpaperArea() > 0">
                 <div class="kpi-mini-lbl">Overall Total Wallpaper Area</div>
                 <div class="kpi-mini-val">{{ grandTotalWallpaperArea() | number:'1.2-2' }} <span class="unit-sm">sq ft</span></div>
@@ -1091,6 +1097,10 @@ interface Room {
               <div class="sticky-metric-item">
                 <span class="sticky-metric-lbl">Rooms &amp; Windows</span>
                 <span class="sticky-metric-val">{{ rooms.length }} rooms · {{ totalWindowsCount() }} windows</span>
+              </div>
+              <div class="sticky-metric-item" *ngIf="totalPanelsCount() > 0">
+                <span class="sticky-metric-lbl">Curtain Panels</span>
+                <span class="sticky-metric-val">{{ totalPanelsCount() }} panels</span>
               </div>
               <div class="sticky-metric-item" *ngIf="grandTotalCurtainMeters() > 0">
                 <span class="sticky-metric-lbl">Total Curtain Cloth</span>
@@ -2292,6 +2302,15 @@ export class CalculationComponent implements OnInit {
 
   totalItemsCount(): number {
     return this.rooms.reduce((sum, r) => sum + r.windows.length, 0);
+  }
+
+  totalPanelsCount(): number {
+    return this.rooms.reduce((sum, room) => sum + room.windows.reduce((roomSum, window) => {
+      if (window.treatmentType !== 'Curtain') return roomSum;
+      const mainPanels = Number(window.panels || 0);
+      const sheerPanels = window.isDoubleCurtain ? Number(window.sheerPanels ?? window.panels ?? 0) : 0;
+      return roomSum + mainPanels + sheerPanels;
+    }, 0), 0);
   }
 
   // ── SAVE QUOTATION ──

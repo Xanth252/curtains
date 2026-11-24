@@ -16,6 +16,12 @@ export class AuthService {
     );
   }
 
+  updateAccount(data: { currentPassword: string; username: string; newPassword?: string }) {
+    return this.http.put<{ username: string }>(`${this.api}/auth/account`, data).pipe(
+      tap(res => localStorage.setItem('username', res.username))
+    );
+  }
+
   logout() { localStorage.removeItem('token'); localStorage.removeItem('username'); this.router.navigate(['/login']); }
   getToken() { return localStorage.getItem('token'); }
   isLoggedIn() { return !!this.getToken(); }

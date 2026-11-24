@@ -22,21 +22,22 @@ import { AuthService } from '../../services/auth.service';
               <img src="assets/logo.png" alt="PFC" class="brand-logo" />
             </div>
             <div class="brand-text">
-              <span class="brand-name">PUKALE FURNISHING</span>
+              <span class="brand-name">PUKALE FURNISHING CENTRE</span>
               <span class="brand-sub">Furnishing &amp; Interior CRM</span>
             </div>
           </a>
         </div>
 
         <!-- Desktop Navigation Bar -->
+        <div class="nav-section-label">WORKSPACE</div>
         <nav class="nav-links desktop-nav">
           <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-icon">📊</span>
             <span>Dashboard</span>
           </a>
-          <a routerLink="/quotation-maker" routerLinkActive="active" target="_blank" class="nav-link-highlight">
+          <a routerLink="/quotation-maker" routerLinkActive="active" class="nav-link-highlight" target="_blank" rel="noopener">
             <span class="nav-icon">🧾</span>
-            <span>Quotation Maker <span class="ext-tag">↗</span></span>
+            <span>New Quotation</span>
           </a>
           <a routerLink="/calculation" routerLinkActive="active">
             <span class="nav-icon">📐</span>
@@ -58,7 +59,13 @@ import { AuthService } from '../../services/auth.service';
             <span class="nav-icon">📈</span>
             <span>Reports</span>
           </a>
+          <a routerLink="/settings" routerLinkActive="active">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+          </a>
         </nav>
+
+        <a routerLink="/quotation-maker" class="sidebar-create desktop-create" target="_blank" rel="noopener"><span>＋</span><span>New quotation</span></a>
 
         <!-- Right Side: User Profile & Sign Out -->
         <div class="header-right">
@@ -88,7 +95,7 @@ import { AuthService } from '../../services/auth.service';
               <img src="assets/logo.png" alt="PFC" class="brand-logo" />
             </div>
             <div class="brand-text">
-              <span class="brand-name" style="font-size:0.8rem;">PUKALE FURNISHING</span>
+                <span class="brand-name" style="font-size:0.8rem;">PUKALE FURNISHING CENTRE</span>
               <span class="brand-sub">Navigation Menu</span>
             </div>
           </div>
@@ -100,9 +107,9 @@ import { AuthService } from '../../services/auth.service';
             <span class="nav-icon">📊</span>
             <span>Dashboard</span>
           </a>
-          <a routerLink="/quotation-maker" routerLinkActive="active" target="_blank" (click)="closeMobileDrawer()">
+          <a routerLink="/quotation-maker" routerLinkActive="active" (click)="closeMobileDrawer()" target="_blank" rel="noopener">
             <span class="nav-icon">🧾</span>
-            <span>Quotation Maker ↗</span>
+            <span>New Quotation</span>
           </a>
           <a routerLink="/calculation" routerLinkActive="active" (click)="closeMobileDrawer()">
             <span class="nav-icon">📐</span>
@@ -124,6 +131,10 @@ import { AuthService } from '../../services/auth.service';
             <span class="nav-icon">📈</span>
             <span>Monthly Reports</span>
           </a>
+          <a routerLink="/settings" routerLinkActive="active" (click)="closeMobileDrawer()">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+          </a>
         </div>
 
         <div class="mobile-drawer-footer">
@@ -143,28 +154,17 @@ import { AuthService } from '../../services/auth.service';
     </div>
   `,
   styles: [`
-    .app-header {
-      background: #ffffff;
-      border-bottom: 1px solid #e2e8f0;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
-    }
+    .app-header { background:rgba(255,255,255,.92); border-right:1px solid rgba(0,0,0,.08); position:fixed; inset:0 auto 0 0; z-index:100; width:244px; box-shadow:none; backdrop-filter:blur(18px); }
     .header-inner {
-      max-width: 1480px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 62px;
-      padding: 0 24px;
-      gap: 16px;
+      max-width:none; margin:0; display:flex; align-items:stretch; flex-direction:column;
+      height:100vh; padding:25px 16px 16px; gap:0;
     }
     .header-left {
       display: flex;
       align-items: center;
       gap: 12px;
+      width:100%;
+      min-width:0;
     }
     .mobile-nav-toggle {
       display: none;
@@ -182,6 +182,8 @@ import { AuthService } from '../../services/auth.service';
       gap: 10px;
       text-decoration: none;
       flex-shrink: 0;
+      min-width:0;
+      flex:1;
     }
     .brand:hover { opacity: 0.95; }
     .brand-logo-wrap {
@@ -205,30 +207,37 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       flex-direction: column;
       line-height: 1.2;
+      min-width:0;
+      flex:1;
     }
     .brand-name {
-      font-size: 0.88rem;
+      font-size: 0.73rem;
       font-weight: 800;
-      letter-spacing: 0.04em;
-      color: #0f172a;
+      letter-spacing: 0.025em;
+      color: #1d1d1f;
+      line-height:1.25;
+      white-space:normal;
+      overflow-wrap:anywhere;
     }
     .brand-sub {
       font-size: 0.68rem;
-      color: #64748b;
+      color: #6e6e73;
       font-weight: 600;
     }
 
     .desktop-nav {
       display: flex;
-      align-items: center;
-      gap: 2px;
+      align-items: stretch;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 12px;
     }
     .nav-links a {
-      padding: 7px 11px;
-      border-radius: 8px;
+      padding: 10px 12px;
+      border-radius: 9px;
       text-decoration: none;
       color: #475569;
-      font-size: 0.83rem;
+      font-size: 0.86rem;
       font-weight: 600;
       transition: all 0.15s ease;
       display: inline-flex;
@@ -240,17 +249,17 @@ import { AuthService } from '../../services/auth.service';
       color: #0f172a;
     }
     .nav-links a.active {
-      background: #0f172a;
-      color: #ffffff;
+      background: #f5f5f7;
+      color: #1d1d1f;
       font-weight: 700;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+      box-shadow: inset 2px 0 #0071e3;
     }
     .nav-links a.active .nav-icon {
       transform: scale(1.05);
     }
     .nav-link-highlight {
-      color: #4f46e5 !important;
-      font-weight: 700 !important;
+      color: #334155 !important;
+      font-weight: 600 !important;
     }
     .nav-link-highlight:hover {
       background: #eef2ff !important;
@@ -262,22 +271,24 @@ import { AuthService } from '../../services/auth.service';
     .nav-icon {
       font-size: 0.95rem;
       line-height: 1;
+      width:20px; text-align:center;
     }
 
     .header-right {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 10px;
       flex-shrink: 0;
+      flex-direction:column; border-top:1px solid #edf0f3; padding-top:14px; margin-top:auto;
     }
     .user-chip {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 4px 10px 4px 5px;
-      background: #f8fafc;
-      border-radius: 9999px;
-      border: 1px solid #e2e8f0;
+      padding: 4px 0;
+      background: #fff;
+      border-radius: 10px;
+      border: 0;
     }
     .user-avatar {
       width: 26px;
@@ -388,7 +399,19 @@ import { AuthService } from '../../services/auth.service';
       background: #f8fafc;
     }
 
+    .sidebar-create { display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; background:#0071e3; color:white; border-radius:999px; padding:10px 12px; margin-top:14px; font-size:.86rem; font-weight:600; box-shadow:none; }
+    .sidebar-create:hover { background:#0077ed; }
+    .sidebar-create span:first-child { font-size:1.1rem; }
     @media (max-width: 1024px) {
+      .app-header { position:sticky; inset:auto; width:auto; border-right:0; border-bottom:1px solid #e2e8f0; }
+      .header-inner { flex-direction:row; align-items:center; justify-content:space-between; height:62px; padding:0 18px; gap:12px; }
+      .header-left { flex-direction:row; }
+      .brand-name { white-space:nowrap; font-size:.78rem; }
+      .brand { flex:0 1 auto; }
+      .brand-text { flex:0 1 auto; }
+      .desktop-create { display:none; }
+      .nav-section-label { display:none; }
+      .header-right { flex-direction:row; align-items:center; border:0; padding:0; margin:0; }
       .desktop-nav { display: none; }
       .mobile-nav-toggle { display: block; }
     }

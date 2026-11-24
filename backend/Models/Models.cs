@@ -30,7 +30,9 @@ public class Quotation
     public string Title { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string Remarks { get; set; } = "";
+    public string QuotationStatus { get; set; } = "Pending";
     public decimal AdvancePayment { get; set; }
+    public string PaymentStatus { get; set; } = "Pending";
     public DateTime? AdvancePaymentDate { get; set; }
     public string DiscountType { get; set; } = "percent"; // "percent" or "flat"
     public decimal DiscountValue { get; set; }

@@ -12,6 +12,7 @@ export const routes: Routes = [
   { path: 'quotation-maker', loadComponent: () => import('./pages/quotation-maker/quotation-maker.component').then(m => m.QuotationMakerComponent), canActivate: [authGuard] },
   { path: 'quotation-maker/:id', loadComponent: () => import('./pages/quotation-maker/quotation-maker.component').then(m => m.QuotationMakerComponent), canActivate: [authGuard] },
   { path: 'monthly-report', loadComponent: () => import('./pages/monthly-report/monthly-report.component').then(m => m.MonthlyReportComponent), canActivate: [authGuard] },
+  { path: 'settings', loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent), canActivate: [authGuard] },
   { path: 'quotations', loadComponent: () => import('./pages/quotations-summary/quotations-summary.component').then(m => m.QuotationsSummaryComponent), canActivate: [authGuard] },
   { path: '**', redirectTo: 'dashboard' }
 ];

@@ -110,6 +110,8 @@ public class CustomersController : ControllerBase
             QuotationNumber = q.QuotationNumber,
             Title = q.Title, CreatedAt = q.CreatedAt, Remarks = q.Remarks,
             AdvancePayment = q.AdvancePayment, AdvancePaymentDate = q.AdvancePaymentDate,
+            PaymentStatus = q.PaymentStatus,
+            QuotationStatus = q.QuotationStatus == "Approved" ? "Accepted" : q.QuotationStatus,
             DiscountType = q.DiscountType,
             DiscountValue = q.DiscountValue,
             DiscountAmount = q.DiscountAmount,

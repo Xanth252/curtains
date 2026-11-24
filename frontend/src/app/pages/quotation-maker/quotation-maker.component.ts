@@ -26,7 +26,7 @@ interface EditableItem {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-quote-maker">
       <app-header />
       <main class="main-content">
 
@@ -249,45 +249,44 @@ interface EditableItem {
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- SECTION 3: QUOTATION ITEMS & PARTICULARS TABLE -->
+        <!-- SECTION 2: QUOTATION ITEMS, QUANTITY & RATE -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <div class="step-card">
+        <div class="step-card items-step-card">
           <div class="step-header">
             <div class="step-indicator">
               <span class="step-num">2</span>
               <div>
                 <h2 class="step-title">Quotation Items &amp; Particulars</h2>
-                <p class="step-desc">Add line items, select/enter particulars with units (e.g. <strong>92 (mtr)</strong>), and reorder easily</p>
+                <p class="step-desc">Enter particulars, quantities, unit types, and rates with instant line total calculations</p>
               </div>
             </div>
             <div class="header-table-actions">
-              <button type="button" class="btn btn-primary btn-sm" (click)="addItem()">
-                <span>+</span> <span>Add Line Item</span>
+              <button type="button" class="btn btn-primary btn-add-row" (click)="addItem()">
+                <span class="btn-icon">➕</span> <span>Add Line Item</span>
               </button>
             </div>
           </div>
 
           <!-- Items Table -->
-          <div class="table-wrap">
+          <div class="table-wrap spacious-table-wrap">
             <table class="items-table-edit">
               <thead>
                 <tr>
-                  <th style="width: 50px; text-align:center;">Sr.</th>
-                  <th>Particulars / Item Description</th>
-                  <th style="width: 110px; text-align:right;">Quantity</th>
-                  <th style="width: 110px;">Unit</th>
-                  <th style="width: 140px; text-align:center;">Display (Qty+Unit)</th>
-                  <th style="width: 120px; text-align:right;">Rate (₹)</th>
-                  <th style="width: 130px; text-align:right;">Total (₹)</th>
-                  <th style="width: 120px; text-align:center;">Reorder &amp; Delete</th>
+                  <th class="th-sr">Sr.</th>
+                  <th class="th-particular">Particulars &amp; Item Description</th>
+                  <th class="th-qty">Quantity</th>
+                  <th class="th-unit">Unit</th>
+                  <th class="th-rate">Rate (₹)</th>
+                  <th class="th-total">Total (₹)</th>
+                  <th class="th-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of items; let idx = index; let isFirst = first; let isLast = last" class="item-row">
                   
                   <!-- Sr. No -->
-                  <td class="text-center font-mono sr-cell">
-                    <span class="sr-badge">{{ item.srNo }}</span>
+                  <td class="text-center sr-cell">
+                    <span class="sr-badge font-mono">{{ item.srNo }}</span>
                   </td>
 
                   <!-- Particulars with Autocomplete Suggestion Dropdown & Product Description -->
@@ -299,7 +298,7 @@ interface EditableItem {
                         [(ngModel)]="item.particular" 
                         (focus)="item.showSuggestions = true"
                         (input)="onParticularInput(item)"
-                        placeholder="Enter item name (e.g. Curtain Fabric, Track Rail)..." />
+                        placeholder="Enter item name (e.g. Curtain Fabric, Track Rail, Sofa Upholstery)..." />
                       
                       <!-- Autocomplete Suggestions Menu -->
                       <div 
@@ -323,24 +322,29 @@ interface EditableItem {
                         rows="1"
                         class="form-control item-desc-input" 
                         [(ngModel)]="item.description" 
-                        placeholder="📝 Product description (e.g. Fabric code, shade, pleated style, brand)..."></textarea>
+                        placeholder="📝 Optional details (e.g. Fabric code, shade, pleated style, brand)..."></textarea>
                     </div>
                   </td>
 
                   <!-- Quantity -->
-                  <td>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      step="any"
-                      class="form-control text-right font-mono" 
-                      [(ngModel)]="item.quantity" 
-                      (ngModelChange)="calcItemTotal(item)"
-                      placeholder="Qty" />
+                  <td class="qty-cell">
+                    <div class="qty-input-wrap">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        step="any"
+                        class="form-control item-number-input qty-field text-right font-mono" 
+                        [(ngModel)]="item.quantity" 
+                        (ngModelChange)="calcItemTotal(item)"
+                        placeholder="0" />
+                      <div class="qty-sub-pill" *ngIf="item.quantity > 0">
+                        {{ item.quantity }} {{ item.unit || 'mtr' }}
+                      </div>
+                    </div>
                   </td>
 
                   <!-- Unit (Select with saved units or Custom Enter) -->
-                  <td>
+                  <td class="unit-cell">
                     <div class="unit-select-wrap">
                       <select class="form-control unit-select" [(ngModel)]="item.unit">
                         <option *ngFor="let u of availableUnits" [value]="u">{{ u }}</option>
@@ -353,23 +357,15 @@ interface EditableItem {
                     </div>
                   </td>
 
-                  <!-- Combined Qty & Unit Preview Badge -->
-                  <td class="text-center">
-                    <span class="combined-qty-chip">
-                      <strong>{{ item.quantity || 0 }}</strong>
-                      <span class="chip-unit">({{ item.unit || 'mtr' }})</span>
-                    </span>
-                  </td>
-
                   <!-- Rate (₹) -->
-                  <td>
+                  <td class="rate-cell">
                     <div class="rate-input-wrap">
                       <span class="currency-symbol">₹</span>
                       <input 
                         type="number" 
                         min="0" 
                         step="any"
-                        class="form-control text-right font-mono" 
+                        class="form-control item-number-input rate-field text-right font-mono" 
                         [(ngModel)]="item.rate" 
                         (ngModelChange)="calcItemTotal(item)"
                         placeholder="0.00" />
@@ -377,8 +373,11 @@ interface EditableItem {
                   </td>
 
                   <!-- Total (₹) -->
-                  <td class="text-right font-mono total-cell">
-                    ₹{{ (item.total || (item.quantity * item.rate)) | number:'1.2-2' }}
+                  <td class="total-cell-wrap">
+                    <div class="total-box font-mono">
+                      <span class="total-currency">₹</span>
+                      <span class="total-amount">{{ (item.total || (item.quantity * item.rate)) | number:'1.2-2' }}</span>
+                    </div>
                   </td>
 
                   <!-- Actions (Up, Down, Delete) -->
@@ -400,17 +399,18 @@ interface EditableItem {
                         type="button" 
                         class="btn-icon-del" 
                         (click)="removeItem(idx)" 
-                        title="Delete line">🗑</button>
+                        title="Delete line item">🗑</button>
                     </div>
                   </td>
                 </tr>
 
                 <!-- Empty state if no rows -->
                 <tr *ngIf="items.length === 0">
-                  <td colspan="8" class="empty-table-cell">
+                  <td colspan="7" class="empty-table-cell">
                     <div class="empty-table-msg">
-                      <span>📋 No particulars added yet. Click "+ Add Line Item" to begin.</span>
-                      <button type="button" class="btn btn-primary btn-sm" (click)="addItem()">+ Add First Line</button>
+                      <span class="empty-msg-icon">📋</span>
+                      <span class="empty-msg-text">No particulars added yet. Click "+ Add Line Item" or choose a quick preset below.</span>
+                      <button type="button" class="btn btn-primary btn-sm" (click)="addItem()">➕ Add First Line Item</button>
                     </div>
                   </td>
                 </tr>
@@ -420,11 +420,11 @@ interface EditableItem {
 
           <!-- Bottom Table Bar: Add Row & Quick Preset Items -->
           <div class="table-bottom-bar">
-            <button type="button" class="btn btn-secondary btn-sm" (click)="addItem()">
-              <span>+ Add Line Item</span>
+            <button type="button" class="btn btn-secondary btn-add-line-sub" (click)="addItem()">
+              <span>➕ Add Another Line Item</span>
             </button>
             <div class="quick-presets-row" *ngIf="savedParticulars.length > 0">
-              <span class="preset-label">Quick add saved particular:</span>
+              <span class="preset-label">Quick add preset:</span>
               <button 
                 type="button" 
                 *ngFor="let sp of savedParticulars.slice(0, 5)" 
@@ -1097,37 +1097,69 @@ interface EditableItem {
     }
 
     /* Items Table */
+    .main-content {
+      max-width: 1760px;
+    }
+    .items-step-card {
+      padding: 30px 32px;
+    }
+    .spacious-table-wrap {
+      overflow-x: auto;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      margin-top: 20px;
+    }
     .items-table-edit {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
+      min-width: 1120px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.96rem;
     }
     .items-table-edit th {
       background: #f8fafc;
       color: #475569;
       font-weight: 700;
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      padding: 10px 12px;
+      padding: 17px 18px;
       border-bottom: 2px solid #e2e8f0;
     }
-    .items-table-edit td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #f1f5f9;
-      vertical-align: middle;
-    }
-    .item-row:hover { background: #fafcff; }
+    .th-sr { width: 54px; text-align: center; }
+    .th-particular { min-width: 380px; text-align: left; }
+    .th-qty { width: 155px; text-align: right; }
+    .th-unit { width: 145px; text-align: left; }
+    .th-rate { width: 175px; text-align: right; }
+    .th-total { width: 175px; text-align: right; }
+    .th-actions { width: 110px; text-align: center; }
 
-    .sr-cell { font-weight: 700; color: #64748b; }
+    .items-table-edit td {
+      padding: 22px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+    .item-row:hover { background: #fbfdff; }
+    .item-row:last-child td { border-bottom: none; }
+
+    .sr-cell {
+      vertical-align: middle !important;
+      text-align: center;
+    }
     .sr-badge {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      line-height: 24px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
       background: #f1f5f9;
-      font-size: 0.78rem;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 1px solid #e2e8f0;
     }
 
     .particular-input-wrap {
@@ -1135,30 +1167,40 @@ interface EditableItem {
     }
     .particular-input {
       width: 100%;
+      min-height: 50px;
       font-weight: 600;
+      font-size: 0.96rem;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 11px 14px;
+      transition: all 0.15s;
+      background: #ffffff;
+    }
+    .particular-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
     }
     .item-desc-wrap {
-      margin-top: 5px;
+      margin-top: 7px;
     }
     .item-desc-input {
       width: 100%;
-      font-size: 0.76rem;
+      font-size: 0.8rem;
       color: #475569;
       background: #f8fafc;
-      border: 1px dashed #cbd5e1;
-      border-radius: 6px;
-      padding: 4px 8px;
-      min-height: 28px;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      padding: 6px 10px;
+      min-height: 42px;
       resize: vertical;
-      line-height: 1.35;
+      line-height: 1.4;
       font-family: inherit;
       transition: all 0.15s ease;
     }
     .item-desc-input:focus {
       background: #ffffff;
-      border-color: #3b82f6;
-      border-style: solid;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
       color: #0f172a;
     }
     .autocomplete-dropdown {
@@ -1168,29 +1210,30 @@ interface EditableItem {
       right: 0;
       background: #ffffff;
       border: 1px solid #cbd5e1;
-      border-radius: 8px;
+      border-radius: 10px;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
       z-index: 50;
-      max-height: 220px;
+      max-height: 360px;
       overflow-y: auto;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     .dropdown-title {
       font-size: 0.68rem;
       font-weight: 800;
       text-transform: uppercase;
       color: #94a3b8;
-      padding: 6px 10px 3px;
+      padding: 7px 12px 4px;
       letter-spacing: 0.05em;
     }
     .autocomplete-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 7px 10px;
+      padding: 8px 12px;
       cursor: pointer;
-      font-size: 0.82rem;
+      font-size: 0.84rem;
       border-bottom: 1px solid #f8fafc;
+      transition: background 0.12s;
     }
     .autocomplete-item:hover {
       background: #eef2ff;
@@ -1204,102 +1247,179 @@ interface EditableItem {
       border-radius: 4px;
       color: #475569;
       font-weight: 600;
-      margin-right: 6px;
+      margin-right: 8px;
     }
-    .sp-rate { font-weight: 700; color: #059669; font-family: monospace; }
+    .sp-rate { font-weight: 700; color: #059669; font-family: ui-monospace, monospace; }
+
+    /* Quantity & Rate */
+    .qty-cell, .rate-cell {
+      vertical-align: top !important;
+    }
+    .qty-input-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+    .item-number-input {
+      width: 100%;
+      min-height: 50px;
+      font-size: 1.02rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      transition: all 0.15s;
+      background: #ffffff;
+    }
+    .item-number-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    }
+    .qty-sub-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #15803d;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
 
     .unit-select-wrap {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
     .unit-select {
+      width: 100%;
+      min-height: 50px;
       font-weight: 600;
-      padding: 6px 8px;
-      font-size: 0.82rem;
+      font-size: 0.88rem;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #ffffff;
+      cursor: pointer;
+    }
+    .unit-select:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
     }
     .btn-custom-unit {
       background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      width: 26px;
-      height: 32px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      width: 36px;
+      height: 50px;
       font-weight: 800;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 1rem;
       color: #475569;
-    }
-    .btn-custom-unit:hover { background: #e0e7ff; color: #4338ca; }
-
-    .combined-qty-chip {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 4px;
-      background: #f0fdf4;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-family: monospace;
+      justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
     }
-    .chip-unit {
-      font-weight: 700;
-      color: #15803d;
+    .btn-custom-unit:hover {
+      background: #e0e7ff;
+      color: #4338ca;
+      border-color: #a5b4fc;
     }
 
     .rate-input-wrap {
       position: relative;
       display: flex;
       align-items: center;
+      width: 100%;
     }
     .currency-symbol {
       position: absolute;
-      left: 8px;
-      font-size: 0.8rem;
-      color: #94a3b8;
+      left: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #64748b;
       pointer-events: none;
     }
-    .rate-input-wrap input { padding-left: 20px !important; }
+    .rate-input-wrap input { padding-left: 24px !important; }
 
-    .total-cell {
-      font-weight: 800;
-      color: #0f172a;
-      font-size: 0.92rem;
+    .total-cell-wrap {
+      vertical-align: middle !important;
+      text-align: right;
     }
+    .total-box {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: flex-end;
+      gap: 3px;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #0f172a;
+      min-width: 110px;
+    }
+    .total-currency { font-size: 0.82rem; color: #64748b; }
+    .total-amount { color: #0f172a; }
 
+    .actions-cell {
+      vertical-align: middle !important;
+      text-align: center;
+    }
     .action-btn-group {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 5px;
     }
     .btn-icon-move {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      width: 26px;
-      height: 26px;
-      font-size: 0.65rem;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 7px;
+      width: 28px;
+      height: 28px;
+      font-size: 0.68rem;
       cursor: pointer;
       color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
     }
-    .btn-icon-move:hover:not(:disabled) { background: #e0e7ff; color: #4338ca; }
+    .btn-icon-move:hover:not(:disabled) {
+      background: #e0e7ff;
+      color: #4338ca;
+      border-color: #a5b4fc;
+      transform: translateY(-1px);
+    }
     .btn-icon-move:disabled { opacity: 0.3; cursor: not-allowed; }
     .btn-icon-del {
-      background: #fee2e2;
-      border: 1px solid #fecaca;
-      border-radius: 6px;
-      width: 26px;
-      height: 26px;
-      font-size: 0.75rem;
+      background: #fef2f2;
+      border: 1.5px solid #fecaca;
+      border-radius: 7px;
+      width: 28px;
+      height: 28px;
+      font-size: 0.82rem;
       cursor: pointer;
       color: #dc2626;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
     }
-    .btn-icon-del:hover { background: #fca5a5; color: #991b1b; }
+    .btn-icon-del:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+      transform: translateY(-1px);
+    }
 
     .empty-table-cell {
-      padding: 32px 20px;
+      padding: 36px 20px;
       text-align: center;
     }
     .empty-table-msg {
@@ -1309,42 +1429,51 @@ interface EditableItem {
       gap: 12px;
       color: #64748b;
     }
+    .empty-msg-icon { font-size: 1.5rem; }
+    .empty-msg-text { font-size: 0.9rem; font-weight: 500; }
 
     .table-bottom-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 12px;
-      padding-top: 12px;
+      margin-top: 22px;
+      padding-top: 20px;
       border-top: 1px dashed #e2e8f0;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 14px;
+    }
+    .btn-add-line-sub {
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 8px;
     }
     .quick-presets-row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .preset-label {
-      font-size: 0.74rem;
+      font-size: 0.76rem;
       font-weight: 700;
       color: #64748b;
     }
     .preset-chip {
-      font-size: 0.74rem;
+      font-size: 0.76rem;
       background: #f8fafc;
       border: 1px solid #cbd5e1;
-      padding: 3px 8px;
-      border-radius: 6px;
+      padding: 5px 10px;
+      border-radius: 7px;
       font-weight: 600;
       color: #334155;
       cursor: pointer;
+      transition: all 0.15s;
     }
     .preset-chip:hover {
       background: #eef2ff;
       border-color: #a5b4fc;
       color: #4338ca;
+      transform: translateY(-1px);
     }
 
     /* Totals Layout */
@@ -1906,8 +2035,17 @@ export class QuotationMakerComponent implements OnInit {
 
   getFilteredParticulars(query: string): SavedParticular[] {
     if (!query || !query.trim()) return this.savedParticulars.slice(0, 6);
-    const q = query.toLowerCase();
-    return this.savedParticulars.filter(p => p.particular.toLowerCase().includes(q)).slice(0, 8);
+    const q = query.trim().toLocaleLowerCase();
+    return this.savedParticulars
+      .filter(p => p.particular.toLocaleLowerCase().includes(q))
+      .sort((a, b) => {
+        const aName = a.particular.toLocaleLowerCase();
+        const bName = b.particular.toLocaleLowerCase();
+        const aRank = aName === q ? 0 : aName.startsWith(q) ? 1 : 2;
+        const bRank = bName === q ? 0 : bName.startsWith(q) ? 1 : 2;
+        return aRank - bRank || aName.localeCompare(bName);
+      })
+      .slice(0, 12);
   }
 
   selectParticular(item: EditableItem, sp: SavedParticular) {

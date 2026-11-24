@@ -83,11 +83,12 @@ public class QuotationsController : ControllerBase
                 p.QuotationStatus
             }).ToList(),
             Windows = q.Windows.Select(w => CustomersController.MapWindow(w)).ToList(),
-            TotalFinalAmount = q.Items.Any() ? q.FinalAmount : q.Products.Sum(p => p.QuotationAmount - p.DiscountAmount),
-            TotalBalance = q.Items.Any() ? (q.FinalAmount - q.AdvancePayment) : q.Products.Sum(p => p.PaymentStatus == "Full payment cleared" ? 0 : (p.QuotationAmount - p.DiscountAmount - p.AdvancePayment)),
-            QuotationStatus = q.Items.Any() ? "Approved" : (!q.Products.Any() ? "Pending" :
-                q.Products.All(p => p.QuotationStatus == "Approved") ? "Approved" :
-                q.Products.All(p => p.QuotationStatus == "Rejected") ? "Rejected" : "Pending")
+            TotalFinalAmount = q.Items.Any() ? q.FinalAmount : Math.Max(0, q.Products.Sum(p => p.QuotationAmount - p.DiscountAmount) - q.DiscountAmount),
+            AdvancePayment = q.AdvancePayment,
+            PaymentStatus = q.PaymentStatus,
+            TotalAdvance = q.AdvancePayment,
+            TotalBalance = q.PaymentStatus == "Full payment cleared" ? 0 : q.Items.Any() ? Math.Max(0, q.FinalAmount - q.AdvancePayment) : Math.Max(0, q.Products.Sum(p => Math.Max(0, p.QuotationAmount - p.DiscountAmount)) - q.DiscountAmount - q.AdvancePayment),
+            QuotationStatus = !string.IsNullOrWhiteSpace(q.QuotationStatus) ? (q.QuotationStatus == "Approved" ? "Accepted" : q.QuotationStatus) : "Pending"
         });
 
         return Ok(result);
@@ -123,6 +124,7 @@ public class QuotationsController : ControllerBase
             Title = dto.Title ?? "",
             Remarks = dto.Remarks ?? "",
             AdvancePayment = dto.AdvancePayment,
+            PaymentStatus = dto.PaymentStatus == "Full payment cleared" ? dto.PaymentStatus : "Pending",
             AdvancePaymentDate = dto.AdvancePaymentDate,
             CreatedAt = dto.CreatedAt ?? DateTime.UtcNow,
             DiscountType = dto.DiscountType ?? "percent",
@@ -207,7 +209,11 @@ public class QuotationsController : ControllerBase
             q.QuotationNumber = dto.QuotationNumber;
         q.Title = dto.Title ?? "";
         q.Remarks = dto.Remarks ?? "";
+        q.QuotationStatus = dto.QuotationStatus is "Accepted" or "Approved" or "Pending" or "Rejected"
+            ? (dto.QuotationStatus == "Approved" ? "Accepted" : dto.QuotationStatus)
+            : q.QuotationStatus;
         q.AdvancePayment = dto.AdvancePayment;
+        if (dto.PaymentStatus == "Full payment cleared") q.PaymentStatus = dto.PaymentStatus;
         q.AdvancePaymentDate = dto.AdvancePaymentDate;
         if (dto.CreatedAt.HasValue) q.CreatedAt = dto.CreatedAt.Value;
         q.DiscountType = dto.DiscountType ?? "percent";
@@ -272,6 +278,64 @@ public class QuotationsController : ControllerBase
             }
         }
 
+        await _db.SaveChangesAsync();
+        await SyncQuotationProductsAsync(q.Id);
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/status")]
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] QuotationStatusUpdateDto dto)
+    {
+        if (dto.Status is not ("Accepted" or "Approved" or "Pending" or "Rejected")) return BadRequest("Invalid quotation status.");
+        var q = await _db.Quotations.Include(x => x.Products).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
+        if (q == null) return NotFound();
+        q.QuotationStatus = dto.Status == "Approved" ? "Accepted" : dto.Status;
+        if (q.QuotationStatus == "Accepted")
+            foreach (var product in q.Products) product.QuotationStatus = "Accepted";
+        await _db.SaveChangesAsync();
+        await SyncQuotationProductsAsync(q.Id);
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/advance")]
+    public async Task<IActionResult> UpdateAdvance(int id, [FromBody] QuotationAdvanceUpdateDto dto)
+    {
+        if (dto.Amount < 0) return BadRequest("Advance cannot be negative.");
+        var q = await _db.Quotations.Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
+        if (q == null) return NotFound();
+        q.AdvancePayment = dto.Amount;
+        q.AdvancePaymentDate = dto.Amount > 0 ? dto.Date ?? DateTime.UtcNow : null;
+        foreach (var product in q.Products) product.AdvancePayment = dto.Amount;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/discount")]
+    public async Task<IActionResult> UpdateDiscount(int id, [FromBody] QuotationAdvanceUpdateDto dto)
+    {
+        if (dto.Amount < 0) return BadRequest("Discount cannot be negative.");
+        var q = await _db.Quotations.Include(x => x.Products).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
+        if (q == null) return NotFound();
+        var quotedAmount = q.SubTotal > 0 ? q.SubTotal : q.Items.Any()
+            ? q.Items.Sum(item => item.Total)
+            : q.Products.Sum(product => Math.Max(0, product.QuotationAmount - product.DiscountAmount));
+        q.DiscountType = "flat";
+        q.DiscountAmount = Math.Min(dto.Amount, quotedAmount);
+        q.DiscountValue = q.DiscountAmount;
+        q.FinalAmount = Math.Max(0, quotedAmount - q.DiscountAmount);
+        await _db.SaveChangesAsync();
+        await SyncQuotationProductsAsync(q.Id);
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/payment-status")]
+    public async Task<IActionResult> UpdatePaymentStatus(int id, [FromBody] QuotationPaymentStatusUpdateDto dto)
+    {
+        if (dto.Status is not ("Pending" or "Full payment cleared")) return BadRequest("Invalid payment status.");
+        var q = await _db.Quotations.Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
+        if (q == null) return NotFound();
+        q.PaymentStatus = dto.Status;
+        foreach (var product in q.Products) product.PaymentStatus = dto.Status;
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -340,7 +404,9 @@ public class QuotationsController : ControllerBase
         Title = q.Title,
         CreatedAt = q.CreatedAt,
         Remarks = q.Remarks,
+        QuotationStatus = q.QuotationStatus,
         AdvancePayment = q.AdvancePayment,
+        PaymentStatus = q.PaymentStatus,
         AdvancePaymentDate = q.AdvancePaymentDate,
         DiscountType = q.DiscountType,
         DiscountValue = q.DiscountValue,
@@ -351,4 +417,16 @@ public class QuotationsController : ControllerBase
         Products = q.Products.Select(p => CustomersController.MapProduct(p)).ToList(),
         Windows = q.Windows.Select(w => CustomersController.MapWindow(w)).ToList()
     };
+
+    private async Task SyncQuotationProductsAsync(int quotationId)
+    {
+        var q = await _db.Quotations.Include(x => x.Products).FirstAsync(x => x.Id == quotationId);
+        foreach (var product in q.Products)
+        {
+            product.AdvancePayment = q.AdvancePayment;
+            product.PaymentStatus = q.PaymentStatus;
+            if (q.QuotationStatus == "Accepted") product.QuotationStatus = "Accepted";
+        }
+        await _db.SaveChangesAsync();
+    }
 }

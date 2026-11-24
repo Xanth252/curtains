@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Location } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -14,8 +15,9 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
   selector: 'app-customer-detail',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, HeaderComponent],
+  changeDetection: ChangeDetectionStrategy.Default,
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-customers">
       <app-header />
       <main class="main-content" *ngIf="customer">
 
@@ -23,9 +25,9 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
         <!-- Page Header -->
         <div class="cd-header">
           <div class="cd-back">
-            <a routerLink="/customers" class="back-link">
+            <a href="" (click)="goBack($event)" class="back-link">
               <span>←</span>
-              <span>Back to Customer Directory</span>
+              <span>Back</span>
             </a>
             <div class="cd-profile-row">
               <div class="cd-avatar" [ngClass]="getAvatarClass(customer.name)">{{ customer.name.charAt(0).toUpperCase() }}</div>
@@ -129,8 +131,8 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
             <div class="section-header">
               <div class="section-title">Quotations ({{ customer.quotations.length }})</div>
               <div class="cd-quote-actions">
-                <a [routerLink]="['/quotation-maker']" [queryParams]="{ customerId: customer.id }" target="_blank" class="btn btn-primary btn-sm">
-                  🧾 Quotation Maker ↗
+                <a [routerLink]="['/quotation-maker']" [queryParams]="{ customerId: customer.id }" class="btn btn-primary btn-sm" target="_blank" rel="noopener">
+                  🧾 New Quotation
                 </a>
                 <a [routerLink]="['/calculation']" [queryParams]="{ customerId: customer.id }" class="btn btn-secondary btn-sm">
                   📐 Window Calculation
@@ -142,8 +144,8 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
             <div class="empty-icon">📋</div>
             <div>No quotations created yet.</div>
             <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
-              <a [routerLink]="['/quotation-maker']" [queryParams]="{ customerId: customer.id }" target="_blank" class="btn btn-primary">
-                🧾 Open Quotation Maker ↗
+              <a [routerLink]="['/quotation-maker']" [queryParams]="{ customerId: customer.id }" class="btn btn-primary" target="_blank" rel="noopener">
+                🧾 New Quotation
               </a>
               <a [routerLink]="['/calculation']" [queryParams]="{ customerId: customer.id }" class="btn btn-secondary">
                 📐 Start Window Calculation
@@ -151,13 +153,12 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
             </div>
           </div>
 
-          <div *ngFor="let q of customer?.quotations ?? []" 
+          <div *ngFor="let q of customer?.quotations ?? []; trackBy: trackByQuotation" 
             class="quotation-card" 
-            [class.selected]="selectedQuotation?.id === q.id" 
-            [class.quote-approved]="q.quotationStatus === 'Approved'"
+            [class.selected]="isQuotationExpanded(q)" 
+            [class.quote-approved]="q.quotationStatus === 'Accepted' || q.quotationStatus === 'Approved'"
             [class.quote-pending]="q.quotationStatus === 'Pending'"
-            [class.quote-rejected]="q.quotationStatus === 'Rejected'"
-            (click)="selectedQuotation = (selectedQuotation?.id === q.id ? null : q)">
+            [class.quote-rejected]="q.quotationStatus === 'Rejected'">
             <div class="quotation-header">
               <div class="quotation-title-wrap">
                 <div class="quote-title-line">
@@ -173,16 +174,21 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
                   <span *ngIf="q.windows && countWindowsExcludingWallpaper(q) > 0" class="meta-win-tag">{{ countWindowsExcludingWallpaper(q) }} window{{ countWindowsExcludingWallpaper(q) !== 1 ? 's' : '' }} · </span>
                   <span *ngIf="q.windows && wallpaperArea(q) > 0" class="meta-wallpaper-tag">{{ wallpaperArea(q) | number:'1.2-2' }} sq ft wallpaper · </span>
                   <span *ngIf="q.products && q.products.length > 0">{{ q.products.length }} product{{ q.products.length !== 1 ? 's' : '' }} · </span>
-                  <span [class]="'badge badge-' + q.quotationStatus.toLowerCase()">{{ q.quotationStatus }}</span>
+                  <select class="form-control" [ngModel]="q.quotationStatus" (ngModelChange)="setQuotationStatus(q, $event)" (click)="$event.stopPropagation()" aria-label="Quotation status">
+                    <option>Pending</option><option>Accepted</option><option>Rejected</option>
+                  </select>
                 </div>
               </div>
-              <div class="quotation-actions">
+              <div class="quotation-actions" (click)="$event.stopPropagation()">
                 <button class="btn btn-secondary btn-sm" (click)="openQuotationPreview(q, $event)" title="Preview styled quotation document">
                   👁️ Preview
                 </button>
-                <a [routerLink]="['/quotation-maker', q.id]" target="_blank" class="btn btn-primary btn-sm" (click)="$event.stopPropagation()" title="Open in Quotation Maker (New Tab)">
-                  🧾 Open ↗
+                <a [routerLink]="['/quotation-maker', q.id]" target="_blank" rel="noopener" class="btn btn-primary btn-sm" title="Edit quotation">
+                  🧾 Edit
                 </a>
+                <button *ngIf="q.windows?.length" type="button" class="btn btn-secondary btn-sm" (click)="editQuotationCalculations(q)" title="Edit saved window calculations">
+                  📐 Edit calculation
+                </button>
                 <button class="btn btn-secondary btn-sm" (click)="downloadQuotationPdf(q, $event)" title="Download PDF directly to device">
                   📥 PDF
                 </button>
@@ -190,9 +196,16 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
                   💬 WhatsApp
                 </button>
                 <button class="btn btn-secondary btn-sm" (click)="deleteQuotation(q); $event.stopPropagation()">Delete</button>
+                <button type="button" class="btn btn-secondary btn-sm quote-details-toggle"
+                  [attr.aria-expanded]="isQuotationExpanded(q)"
+                  [attr.aria-controls]="'quotation-details-' + q.id"
+                  (click)="toggleQuotationDetails(q, $event)">
+                  {{ isQuotationExpanded(q) ? 'Hide details' : 'View details' }}
+                  <span aria-hidden="true">{{ isQuotationExpanded(q) ? '⌃' : '⌄' }}</span>
+                </button>
               </div>
             </div>
-            <div *ngIf="selectedQuotation?.id === q.id" class="quotation-details">
+            <div *ngIf="isQuotationExpanded(q)" class="quotation-details" [id]="quotationDetailsId(q)" (click)="$event.stopPropagation()">
               <div class="quotation-summary">
                 <div class="sum-item">
                   <span class="sum-label">Total Amount</span>
@@ -200,12 +213,24 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
                 </div>
                 <div class="sum-item">
                   <span class="sum-label">Total Advance</span>
-                  <span class="sum-value success">₹{{ q.totalProductAdvance | number:'1.0-0' }}</span>
+                  <span class="sum-value success">₹{{ q.totalAdvance | number:'1.0-0' }}</span>
                 </div>
                 <div class="sum-item">
                   <span class="sum-label">Balance</span>
-                  <span class="sum-value" [class.danger]="q.totalBalance > 0">₹{{ q.totalBalance | number:'1.0-0' }}</span>
+                  <span class="sum-value" [class.danger]="quotationBalance(q) > 0">₹{{ quotationBalance(q) | number:'1.0-0' }}</span>
                 </div>
+              </div>
+              <div class="quotation-summary" style="margin-top:12px; align-items:end">
+                <label class="sum-item">Advance payment
+                  <input type="number" min="0" class="form-control" [(ngModel)]="q.advancePayment" (click)="$event.stopPropagation()" />
+                </label>
+                <button class="btn btn-primary btn-sm" (click)="saveQuotationAdvance(q, $event)">Save advance</button>
+                <label class="sum-item">Discount Given (₹)
+                  <input type="number" min="0" class="form-control" [(ngModel)]="q.discountAmount" (click)="$event.stopPropagation()" />
+                </label>
+                <button class="btn btn-primary btn-sm" (click)="saveQuotationDiscount(q, $event)">Save discount</button>
+                <button type="button" class="payment-cleared-toggle" [class.is-cleared]="isQuotationPaymentCleared(q)" [attr.aria-pressed]="isQuotationPaymentCleared(q)" (click)="toggleQuotationPaymentStatus(q, $event)"><span class="payment-checkmark">✓</span><span><strong>{{ isQuotationPaymentCleared(q) ? 'Full Payment Cleared' : 'Mark Full Payment Cleared' }}</strong><small>{{ isQuotationPaymentCleared(q) ? 'Payment recorded as complete' : 'Set this quotation as fully paid' }}</small></span></button>
+                <span class="sum-item"><span class="sum-label">Status</span><strong>{{ q.quotationStatus }}</strong></span>
               </div>
               <div class="quotation-remarks" *ngIf="q.remarks">
                 <span class="remarks-label">Remarks:</span>
@@ -228,8 +253,8 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
                     <button class="btn btn-whatsapp btn-sm" (click)="shareQuotationWhatsApp(q, $event)" title="Share PDF document via WhatsApp">
                       💬 Share via WhatsApp
                     </button>
-                    <a [routerLink]="['/quotation-maker', q.id]" target="_blank" class="btn btn-primary btn-sm" (click)="$event.stopPropagation()">
-                      ✏️ Edit in Maker ↗
+                    <a [routerLink]="['/quotation-maker', q.id]" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                      ✏️ Edit in Maker
                     </a>
                   </div>
                 </div>
@@ -365,7 +390,7 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
                       </tr>
                     </thead>
                     <tbody>
-                      <ng-container *ngFor="let group of getRoomGroups(q)">
+                      <ng-container *ngFor="let group of getRoomGroups(q); trackBy: trackByRoomGroup">
                         <!-- Room Header Row -->
                         <tr class="room-hdr-row">
                           <td colspan="7">
@@ -1029,6 +1054,12 @@ import { PdfService, QuotationPdfData } from '../../services/pdf.service';
     </div>
   `,
   styles: [`
+    .payment-cleared-toggle { display:inline-flex; align-items:center; gap:10px; padding:9px 14px; border:1px solid #d1fae5; border-radius:12px; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); color:#166534; cursor:pointer; transition:all .18s ease; }
+    .payment-cleared-toggle:hover { border-color:#86efac; box-shadow:0 4px 12px rgba(22,101,52,.10); transform:translateY(-1px); }
+    .payment-checkmark { display:grid; place-items:center; width:24px; height:24px; flex:none; border:1.5px solid #86efac; border-radius:8px; color:transparent; background:white; font-size:14px; font-weight:800; }
+    .payment-cleared-toggle.is-cleared .payment-checkmark { color:#fff; background:#16a34a; border-color:#16a34a; }
+    .payment-cleared-toggle strong { display:block; font-size:.78rem; }
+    .payment-cleared-toggle small { display:block; margin-top:2px; color:#4b7a5a; font-size:.66rem; }
     .modal-preview {
       max-width: 860px;
       width: 95%;
@@ -1277,6 +1308,11 @@ export class CustomerDetailComponent implements OnInit {
   showQuotationModal = false; savingQuotation = false; editingQuotation: Quotation | null = null;
   qForm: any = this.emptyQuotationForm();
   selectedQuotation: Quotation | null = null;
+  expandedQuotationId: number | null = null;
+  expandedQuotationKey: string | null = null;
+
+  // Cache for getRoomGroups to prevent infinite change detection loops
+  private _roomGroupsCache = new Map<string, RoomCalculationGroup[]>();
 
   showCustomerModal = false;
   savingCustomer = false;
@@ -1292,8 +1328,11 @@ export class CustomerDetailComponent implements OnInit {
     private router: Router,
     private toast: ToastService,
     private pdfService: PdfService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private location: Location
   ) {}
+
+  goBack(event: Event) { event.preventDefault(); this.location.back(); }
 
   getAvatarClass(name: string): string {
     const classes = ['avatar-emerald', 'avatar-indigo', 'avatar-violet', 'avatar-amber', 'avatar-rose', 'avatar-cyan', 'avatar-teal'];
@@ -1407,20 +1446,29 @@ export class CustomerDetailComponent implements OnInit {
 
   load() {
     const id = +this.route.snapshot.paramMap.get('id')!;
-    this.api.getCustomer(id).subscribe(c => {
+    this._roomGroupsCache.clear();
+    this.api.getCustomer(id).subscribe({ next: c => {
+      const previouslyExpandedId = this.expandedQuotationId;
       this.customer = c;
       if (this.targetQuotationId) {
         this.activeTab = 'quotations';
         const found = c.quotations.find(q => q.id === this.targetQuotationId);
         if (found) {
-          this.selectedQuotation = found;
+          this.expandedQuotationId = found.id;
           setTimeout(() => {
-            const el = document.getElementById('quotation-' + this.targetQuotationId);
+            // Keep this in sync with the id on the expanded details panel below.
+            const el = document.getElementById('quotation-details-' + this.targetQuotationId);
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }, 150);
         }
+      } else {
+        this.expandedQuotationId = c.quotations.some(q => q.id === previouslyExpandedId)
+          ? previouslyExpandedId
+          : null;
       }
-    });
+    }, error: () => {
+      this.toast.error('Could not load this customer profile. Please try again.');
+    }});
   }
 
   openEditCustomer() {
@@ -1454,9 +1502,46 @@ export class CustomerDetailComponent implements OnInit {
     return Number(p.balanceAmount ?? 0);
   }
 
-  totalFinal(): number { return this.customer?.products.filter(p => p.quotationStatus === 'Approved').reduce((s, p) => s + p.finalAmount, 0) ?? 0; }
-  totalCleared(): number { return this.customer?.products.filter(p => p.quotationStatus === 'Approved' && p.paymentStatus === 'Full payment cleared').reduce((s, p) => s + p.finalAmount, 0) ?? 0; }
-  totalOutstanding(): number { return this.customer?.products.filter(p => p.quotationStatus === 'Approved').reduce((s, p) => s + this.effectiveBalance(p), 0) ?? 0; }
+  private isAccepted(status?: string): boolean { return status === 'Accepted' || status === 'Approved'; }
+  quotationBalance(q: Quotation): number {
+    if (this.isQuotationPaymentCleared(q)) return 0;
+    if (q.items?.length) return Math.max(0, Number(q.finalAmount ?? q.totalFinalAmount ?? 0) - Number(q.advancePayment ?? 0));
+    if (q.products?.length) return q.products.reduce((sum, p) => sum + this.effectiveBalance(p), 0);
+    return Math.max(0, Number(q.totalBalance ?? 0));
+  }
+  isQuotationPaymentCleared(q: Quotation): boolean {
+    return q.paymentStatus === 'Full payment cleared' || (!!q.products?.length && q.products.every(p => p.paymentStatus === 'Full payment cleared'));
+  }
+  totalFinal(): number { return (this.customer?.products.filter(p => this.isAccepted(p.quotationStatus)).reduce((s, p) => s + p.finalAmount, 0) ?? 0) + (this.customer?.quotations.filter(q => this.isAccepted(q.quotationStatus) && q.items?.length).reduce((s,q) => s + Number(q.finalAmount ?? q.totalFinalAmount),0) ?? 0); }
+  totalCleared(): number { return this.customer?.products.filter(p => this.isAccepted(p.quotationStatus) && p.paymentStatus === 'Full payment cleared').reduce((s, p) => s + p.finalAmount, 0) ?? 0; }
+  totalOutstanding(): number { return this.customer?.quotations.filter(q => this.isAccepted(q.quotationStatus)).reduce((sum, q) => sum + this.quotationBalance(q), 0) ?? 0; }
+
+  setQuotationStatus(q: Quotation, status: string) {
+    this.api.updateQuotationStatus(q.id, status).subscribe(() => { q.quotationStatus = status; this.load(); });
+  }
+  saveQuotationAdvance(q: Quotation, event: Event) {
+    event.stopPropagation();
+    this.api.updateQuotationAdvance(q.id, Number(q.advancePayment || 0)).subscribe(() => this.load());
+  }
+  saveQuotationDiscount(q: Quotation, event: Event) {
+    event.stopPropagation();
+    const grossProductTotal = q.products?.reduce((sum, p) => sum + Number(p.quotationAmount || 0) - Number(p.discountAmount || 0), 0) ?? 0;
+    const quoted = Number(q.subTotal ?? (q.items?.length ? Number(q.finalAmount ?? q.totalFinalAmount ?? 0) + Number(q.discountAmount ?? 0) : (grossProductTotal || Number(q.totalFinalAmount ?? 0) + Number(q.discountAmount ?? 0))));
+    const discount = Math.min(quoted, Math.max(0, Number(q.discountAmount || 0)));
+    this.api.updateQuotationDiscount(q.id, discount).subscribe({ next: () => { this.toast.success('Discount saved and balance updated'); this.load(); }, error: () => this.toast.error('Could not save discount') });
+  }
+  toggleQuotationPaymentStatus(q: Quotation, event: Event) {
+    event.stopPropagation();
+    const cleared = !this.isQuotationPaymentCleared(q);
+    this.api.updateQuotationPaymentStatus(q.id, cleared ? 'Full payment cleared' : 'Pending').subscribe({
+      next: () => { q.paymentStatus = cleared ? 'Full payment cleared' : 'Pending'; this.load(); },
+      error: () => this.toast.error('Could not update payment status')
+    });
+  }
+  setQuotationPaymentStatus(q: Quotation, cleared: boolean, event: Event) {
+    event.stopPropagation();
+    this.api.updateQuotationPaymentStatus(q.id, cleared ? 'Full payment cleared' : 'Pending').subscribe(() => this.load());
+  }
 
   countRooms(q: Quotation): number {
     return new Set(q.windows?.map(w => (w.location || 'Unassigned').trim() || 'Unassigned')).size;
@@ -1543,6 +1628,10 @@ export class CustomerDetailComponent implements OnInit {
   }
 
   getRoomGroups(q: Quotation): RoomCalculationGroup[] {
+    const cacheKey = this.quotationKey(q);
+    const cached = this._roomGroupsCache.get(cacheKey);
+    if (cached) return cached;
+
     const grouped = new Map<string, QuotationWindow[]>();
 
     for (const w of q.windows ?? []) {
@@ -1553,7 +1642,7 @@ export class CustomerDetailComponent implements OnInit {
       grouped.get(roomName)!.push(w);
     }
 
-    return Array.from(grouped.entries()).map(([roomName, windows]) => {
+    const result = Array.from(grouped.entries()).map(([roomName, windows]) => {
       const totalCurtainMeters = Math.round(windows
         .filter(w => w.treatmentType === 'Curtain')
         .reduce((sum, w) => sum + (w.requirement ?? 0), 0) * 100) / 100;
@@ -1584,6 +1673,9 @@ export class CustomerDetailComponent implements OnInit {
         totalWallpaperArea
       };
     });
+
+    this._roomGroupsCache.set(cacheKey, result);
+    return result;
   }
 
   curtainMeters(q: Quotation): number {
@@ -1634,6 +1726,35 @@ export class CustomerDetailComponent implements OnInit {
     this.showQuotationModal = true;
   }
 
+  toggleQuotationDetails(q: Quotation, event?: Event): void {
+    event?.stopPropagation();
+    const key = this.quotationKey(q);
+    const isExpanded = this.expandedQuotationKey === key || (q.id != null && this.expandedQuotationId === q.id);
+    this.expandedQuotationKey = isExpanded ? null : key;
+    this.expandedQuotationId = isExpanded || q.id == null ? null : q.id;
+  }
+
+  quotationKey(q: Quotation): string {
+    return q.id != null ? `id:${q.id}` : `quotation:${q.quotationNumber || ''}:${q.title || ''}:${q.createdAt || ''}`;
+  }
+
+  quotationDetailsId(q: Quotation): string {
+    const id = (q as any).id;
+    return `quotation-details-${id ?? this.quotationKey(q)}`;
+  }
+
+  isQuotationExpanded(q: Quotation): boolean {
+    return this.expandedQuotationKey === this.quotationKey(q) || (q.id != null && this.expandedQuotationId === q.id);
+  }
+
+  trackByQuotation(index: number, q: Quotation): any {
+    return q.id ?? this.quotationKey(q);
+  }
+
+  trackByRoomGroup(index: number, group: RoomCalculationGroup): string {
+    return group.roomName;
+  }
+
   openAddProductToQuotation(q: Quotation) {
     this.editingProduct = null;
     this.pForm = this.emptyForm();
@@ -1670,6 +1791,7 @@ export class CustomerDetailComponent implements OnInit {
   openAddProduct() { this.editingProduct = null; this.pForm = this.emptyForm(); this.selectedQuotation = null; this.showProductModal = true; }
   openEditProduct(p: Product) {
     this.editingProduct = p;
+    this.selectedQuotation = this.customer?.quotations.find(q => q.id === p.quotationId) ?? null;
     this.pForm = { productName: p.productName, serialNumber: p.serialNumber, company: p.company, productType: p.productType, quantity: p.quantity, colour: p.colour, measurement: p.measurement, dateOrdered: p.dateOrdered ? p.dateOrdered.substring(0, 10) : '', expectedDeliveryDate: p.expectedDeliveryDate ? p.expectedDeliveryDate.substring(0, 10) : '', internalRemarks: p.internalRemarks, quotationAmount: p.quotationAmount, discountAmount: p.discountAmount, quotationStatus: p.quotationStatus, advancePayment: p.advancePayment, paymentStatus: p.paymentStatus, paymentDate: p.paymentDate ? p.paymentDate.substring(0, 10) : '', paymentRemarks: p.paymentRemarks };
     this.showProductModal = true;
   }

@@ -70,6 +70,16 @@ public class ProductsController : ControllerBase
             AdvancePayment = dto.AdvancePayment, PaymentStatus = dto.PaymentStatus,
             PaymentDate = dto.PaymentDate, PaymentRemarks = dto.PaymentRemarks
         };
+        if (product.QuotationId.HasValue)
+        {
+            var quotation = await _db.Quotations.FirstOrDefaultAsync(q => q.Id == product.QuotationId.Value);
+            if (quotation != null)
+            {
+                product.QuotationStatus = quotation.QuotationStatus;
+                product.AdvancePayment = quotation.AdvancePayment;
+                product.PaymentStatus = quotation.PaymentStatus;
+            }
+        }
         _db.Products.Add(product);
         await _db.SaveChangesAsync();
 
@@ -99,6 +109,24 @@ public class ProductsController : ControllerBase
         product.DiscountAmount = dto.DiscountAmount; product.QuotationStatus = dto.QuotationStatus;
         product.AdvancePayment = dto.AdvancePayment; product.PaymentStatus = dto.PaymentStatus;
         product.PaymentDate = dto.PaymentDate; product.PaymentRemarks = dto.PaymentRemarks;
+        product.QuotationId = dto.QuotationId;
+
+        if (product.QuotationId.HasValue)
+        {
+            var quotation = await _db.Quotations.Include(q => q.Products).FirstOrDefaultAsync(q => q.Id == product.QuotationId.Value);
+            if (quotation != null)
+            {
+                quotation.AdvancePayment = product.AdvancePayment;
+                quotation.PaymentStatus = product.PaymentStatus;
+                quotation.QuotationStatus = product.QuotationStatus == "Approved" ? "Accepted" : product.QuotationStatus;
+                foreach (var linked in quotation.Products.Where(p => p.Id != product.Id))
+                {
+                    linked.AdvancePayment = product.AdvancePayment;
+                    linked.PaymentStatus = product.PaymentStatus;
+                    linked.QuotationStatus = quotation.QuotationStatus;
+                }
+            }
+        }
 
         if (typeChanged)
         {

@@ -20,8 +20,15 @@ public class DashboardController : ControllerBase
     private static string QuoteStatus(IEnumerable<backend.Models.Product> products)
     {
         var list = products.ToList();
-        if (list.All(p => p.QuotationStatus == "Approved")) return "Approved";
+        if (!list.Any()) return "Pending";
+        if (list.All(p => p.QuotationStatus is "Approved" or "Accepted")) return "Accepted";
         if (list.All(p => p.QuotationStatus == "Rejected")) return "Rejected";
+        return "Pending";
+    }
+
+    private static string EffectiveQuoteStatus(backend.Models.Quotation q)
+    {
+        if (!string.IsNullOrWhiteSpace(q.QuotationStatus)) return q.QuotationStatus == "Approved" ? "Accepted" : q.QuotationStatus;
         return "Pending";
     }
 
@@ -32,44 +39,63 @@ public class DashboardController : ControllerBase
         return "Pending";
     }
 
+    private static decimal ProductQuotationBalance(backend.Models.Quotation q)
+    {
+        if (q.PaymentStatus == "Full payment cleared") return 0;
+        var outstandingProducts = q.Products.Where(p => p.PaymentStatus != "Full payment cleared").ToList();
+        if (outstandingProducts.Count == 0) return 0;
+        var quoted = outstandingProducts.Sum(p => Math.Max(0, p.QuotationAmount - p.DiscountAmount));
+        // Quote-level advance is copied to linked products for display; count it once.
+        var advance = q.AdvancePayment > 0 ? q.AdvancePayment : outstandingProducts.Sum(p => p.AdvancePayment);
+        return Math.Max(0, quoted - q.DiscountAmount - advance);
+    }
+
+    private static decimal ItemizedQuotationBalance(backend.Models.Quotation q)
+    {
+        if (q.PaymentStatus == "Full payment cleared") return 0;
+        var final = q.FinalAmount > 0 ? q.FinalAmount : Math.Max(0, q.SubTotal - q.DiscountAmount);
+        return Math.Max(0, final - q.AdvancePayment);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var allQuotations = await _db.Quotations.Include(q => q.Products).ToListAsync();
-        var directProducts = await _db.Products.Where(p => p.QuotationId == null).ToListAsync();
+        var allQuotations = await _db.Quotations.Include(q => q.Products).Include(q => q.Items).ToListAsync();
+        // Standalone products are not saved quotations and never contribute to accepted quote totals.
 
         // Only count amounts for Approved products (pending/rejected quotations excluded)
         var approvedQuotationProducts = allQuotations
+            .Where(q => EffectiveQuoteStatus(q) == "Accepted")
             .SelectMany(q => q.Products)
-            .Where(p => p.QuotationStatus == "Approved")
+            .Where(p => p.QuotationStatus is "Approved" or "Accepted")
             .ToList();
-        var approvedDirectProducts = directProducts
-            .Where(p => p.QuotationStatus == "Approved")
-            .ToList();
-        var allApproved = approvedQuotationProducts.Concat(approvedDirectProducts).ToList();
+        var allApproved = approvedQuotationProducts;
 
         var totalFinal   = allApproved.Sum(p => p.QuotationAmount - p.DiscountAmount);
         var clearedProds = allApproved.Where(p => p.PaymentStatus == "Full payment cleared").ToList();
         var totalCleared = clearedProds.Sum(p => p.QuotationAmount - p.DiscountAmount);
-        var totalPending = allApproved
-            .Where(p => p.PaymentStatus != "Full payment cleared")
-            .Sum(p => p.QuotationAmount - p.DiscountAmount - p.AdvancePayment)
-            - allQuotations
-                .Where(q => QuoteStatus(q.Products) == "Approved")
-                .Sum(q => q.AdvancePayment);
+        // Compute outstanding quote by quote so pending/rejected quotes can never leak
+        // into the dashboard total and a quote-level advance cannot offset another quote.
+        var acceptedProductBalance = allQuotations
+            .Where(q => EffectiveQuoteStatus(q) == "Accepted" && !q.Items.Any())
+            .Sum(ProductQuotationBalance);
+        var approvedItemized = allQuotations.Where(q => q.Items.Any() && EffectiveQuoteStatus(q) == "Accepted").ToList();
+        var approvedItemizedAmount = approvedItemized.Sum(q => q.FinalAmount);
+        var itemizedAdvance = approvedItemized.Sum(q => Math.Min(q.AdvancePayment, q.FinalAmount));
 
         return Ok(new DashboardDto
         {
             TotalQuotations      = allQuotations.Count,
-            ApprovedQuotations   = allQuotations.Count(q => QuoteStatus(q.Products) == "Approved"),
-            RejectedQuotations   = allQuotations.Count(q => QuoteStatus(q.Products) == "Rejected"),
-            PendingQuotations    = allQuotations.Count(q => QuoteStatus(q.Products) == "Pending"),
-            TotalQuotedAmount    = allApproved.Sum(p => p.QuotationAmount),
-            TotalDiscountAmount  = allApproved.Sum(p => p.DiscountAmount),
-            TotalFinalAmount     = totalFinal,
-            TotalAdvanceReceived = allApproved.Sum(p => p.AdvancePayment),
+            ApprovedQuotations   = allQuotations.Count(q => EffectiveQuoteStatus(q) == "Accepted"),
+            RejectedQuotations   = allQuotations.Count(q => EffectiveQuoteStatus(q) == "Rejected"),
+            PendingQuotations    = allQuotations.Count(q => EffectiveQuoteStatus(q) == "Pending"),
+            TotalQuotedAmount    = allApproved.Sum(p => p.QuotationAmount) + approvedItemized.Sum(q => q.SubTotal > 0 ? q.SubTotal : q.FinalAmount),
+            TotalDiscountAmount  = allApproved.Sum(p => p.DiscountAmount) + approvedItemized.Sum(q => q.DiscountAmount),
+            TotalFinalAmount     = totalFinal + approvedItemizedAmount,
+            TotalAdvanceReceived = allApproved.Sum(p => p.AdvancePayment) + itemizedAdvance,
             TotalPaymentsCleared = totalCleared,
-            TotalPendingPayments = Math.Max(totalPending, 0)
+            TotalPendingPayments = acceptedProductBalance
+                + approvedItemized.Sum(ItemizedQuotationBalance)
         });
     }
 

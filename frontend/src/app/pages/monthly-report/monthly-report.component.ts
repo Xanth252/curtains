@@ -11,7 +11,7 @@ import { MonthlyReport } from '../../models/models';
   standalone: true,
   imports: [CommonModule, FormsModule, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-reports">
       <app-header />
       <main class="main-content">
 

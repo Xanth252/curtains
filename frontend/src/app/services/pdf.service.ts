@@ -246,15 +246,15 @@ export class PdfService {
               <table class="bank-details-mini-table">
                 <tr>
                   <td class="bk-lbl">Account Name</td>
-                  <td class="bk-val"><strong>${this.escapeHtml(bank.accountName || 'PUKALE FURNISHING CENTRE')}</strong></td>
+                  <td class="bk-val">${this.escapeHtml(bank.accountName || 'PUKALE FURNISHING CENTRE')}</td>
                 </tr>
                 <tr>
                   <td class="bk-lbl">Account Number</td>
-                  <td class="bk-val font-mono"><strong>${this.escapeHtml(bank.accountNumber || '925020051982106')}</strong></td>
+                  <td class="bk-val">${this.escapeHtml(bank.accountNumber || '925020051982106')}</td>
                 </tr>
                 <tr>
                   <td class="bk-lbl">IFSC</td>
-                  <td class="bk-val font-mono"><strong>${this.escapeHtml(bank.ifscCode || 'UTIB0000525')}</strong></td>
+                  <td class="bk-val">${this.escapeHtml(bank.ifscCode || 'UTIB0000525')}</td>
                 </tr>
                 <tr>
                   <td class="bk-lbl">Account Type</td>
@@ -262,7 +262,7 @@ export class PdfService {
                 </tr>
                 <tr>
                   <td class="bk-lbl">Bank</td>
-                  <td class="bk-val"><strong>${this.escapeHtml(bank.bankName || 'AXIS BANK')}</strong></td>
+                  <td class="bk-val">${this.escapeHtml(bank.bankName || 'AXIS BANK')}</td>
                 </tr>
               </table>
 
@@ -694,27 +694,31 @@ export class PdfService {
         flex: 1.2;
       }
       .section-blue-title {
-        font-size: 11px;
-        font-weight: 800;
-        color: #0284c7;
-        letter-spacing: 0.04em;
+        font-size: 9px;
+        font-weight: 700;
+        color: #3786a8;
+        letter-spacing: 0.035em;
         text-transform: uppercase;
         margin-bottom: 6px;
       }
       .bank-details-mini-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 10.5px;
+        font-size: 7.5px;
+        line-height: 1.15;
       }
       .bank-details-mini-table td {
-        padding: 2.5px 4px 2.5px 0;
+        padding: 1.5px 4px 1.5px 0;
+        font-size: 7.5px;
+        line-height: 1.15;
       }
       .bk-lbl {
         color: #475569;
         width: 110px;
       }
       .bk-val {
-        color: #0f172a;
+        color: #475569;
+        font-weight: 400;
       }
       .terms-text-block {
         font-size: 9.5px;

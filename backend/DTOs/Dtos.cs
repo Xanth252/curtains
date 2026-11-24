@@ -2,6 +2,7 @@ namespace backend.DTOs;
 
 public record LoginRequest(string Username, string Password);
 public record LoginResponse(string Token, string Username);
+public record UpdateAccountRequest(string CurrentPassword, string Username, string? NewPassword);
 
 public class CustomerDto
 {
@@ -39,6 +40,7 @@ public class QuotationWindowDto
     public double Requirement { get; set; }
     public string Unit { get; set; } = "m";
     public string Remarks { get; set; } = "";
+    public string QuotationStatus { get; set; } = "Pending";
 }
 
 public class QuotationWindowCreateDto
@@ -57,6 +59,7 @@ public class QuotationWindowCreateDto
     public double Requirement { get; set; }
     public string Unit { get; set; } = "m";
     public string Remarks { get; set; } = "";
+    public string QuotationStatus { get; set; } = "Pending";
 }
 
 public class QuotationItemDto
@@ -95,6 +98,7 @@ public class QuotationDto
     public DateTime CreatedAt { get; set; }
     public string Remarks { get; set; } = "";
     public decimal AdvancePayment { get; set; }
+    public string PaymentStatus { get; set; } = "Pending";
     public DateTime? AdvancePaymentDate { get; set; }
     public string DiscountType { get; set; } = "percent";
     public decimal DiscountValue { get; set; }
@@ -104,30 +108,11 @@ public class QuotationDto
     public List<QuotationItemDto> Items { get; set; } = new();
     public List<ProductDto> Products { get; set; } = new();
     public List<QuotationWindowDto> Windows { get; set; } = new();
-    public decimal TotalFinalAmount => Items.Any() ? FinalAmount : Products.Sum(p => p.FinalAmount);
+    public decimal TotalFinalAmount => Items.Any() ? FinalAmount : Math.Max(0, Products.Sum(p => p.FinalAmount) - DiscountAmount);
     public decimal TotalProductAdvance => Products.Sum(p => p.AdvancePayment);
-    public decimal TotalAdvance => AdvancePayment + TotalProductAdvance;
-    public decimal TotalBalance => Items.Any() ? (FinalAmount - AdvancePayment) : Products.Sum(p => p.PaymentStatus == "Full payment cleared" ? 0 : p.BalanceAmount);
-    public string QuotationStatus
-    {
-        get
-        {
-            if (!Products.Any()) return "Pending";
-            if (Products.All(p => p.QuotationStatus == "Approved")) return "Approved";
-            if (Products.All(p => p.QuotationStatus == "Rejected")) return "Rejected";
-            return "Pending";
-        }
-    }
-    public string PaymentStatus
-    {
-        get
-        {
-            if (Items.Any()) return (FinalAmount > 0 && AdvancePayment >= FinalAmount) ? "Full payment cleared" : (AdvancePayment > 0 ? "Partially Paid" : "Pending");
-            if (!Products.Any()) return "Pending";
-            if (Products.All(p => p.PaymentStatus == "Full payment cleared")) return "Full payment cleared";
-            return "Pending";
-        }
-    }
+    public decimal TotalAdvance => AdvancePayment;
+    public decimal TotalBalance => PaymentStatus == "Full payment cleared" ? 0 : Items.Any() ? Math.Max(0, FinalAmount - AdvancePayment) : Math.Max(0, Products.Sum(p => p.FinalAmount) - DiscountAmount - AdvancePayment);
+    public string QuotationStatus { get; set; } = "Pending";
 }
 
 public class QuotationCreateDto
@@ -136,7 +121,9 @@ public class QuotationCreateDto
     public string QuotationNumber { get; set; } = "";
     public string Title { get; set; } = "";
     public string Remarks { get; set; } = "";
+    public string QuotationStatus { get; set; } = "Pending";
     public decimal AdvancePayment { get; set; }
+    public string PaymentStatus { get; set; } = "Pending";
     public DateTime? AdvancePaymentDate { get; set; }
     public DateTime? CreatedAt { get; set; }
     public string DiscountType { get; set; } = "percent";
@@ -147,6 +134,10 @@ public class QuotationCreateDto
     public List<QuotationItemCreateDto>? Items { get; set; }
     public List<QuotationWindowCreateDto>? Windows { get; set; }
 }
+
+public class QuotationStatusUpdateDto { public string Status { get; set; } = "Pending"; }
+public class QuotationAdvanceUpdateDto { public decimal Amount { get; set; } public DateTime? Date { get; set; } }
+public class QuotationPaymentStatusUpdateDto { public string Status { get; set; } = "Pending"; }
 
 public class SavedParticularDto
 {

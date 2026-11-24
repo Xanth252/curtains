@@ -78,7 +78,9 @@ using (var scope = app.Services.CreateScope())
         "ALTER TABLE \"Quotations\" ADD COLUMN \"DiscountValue\" decimal NOT NULL DEFAULT 0",
         "ALTER TABLE \"Quotations\" ADD COLUMN \"DiscountAmount\" decimal NOT NULL DEFAULT 0",
         "ALTER TABLE \"Quotations\" ADD COLUMN \"SubTotal\" decimal NOT NULL DEFAULT 0",
-        "ALTER TABLE \"Quotations\" ADD COLUMN \"FinalAmount\" decimal NOT NULL DEFAULT 0"
+        "ALTER TABLE \"Quotations\" ADD COLUMN \"FinalAmount\" decimal NOT NULL DEFAULT 0",
+        "ALTER TABLE \"Quotations\" ADD COLUMN \"QuotationStatus\" TEXT NOT NULL DEFAULT 'Pending'"
+        ,"ALTER TABLE \"Quotations\" ADD COLUMN \"PaymentStatus\" TEXT NOT NULL DEFAULT 'Pending'"
     };
 
     foreach (var upgrade in quotationColumnUpgrades)

@@ -89,6 +89,34 @@ public class ParticularsController : ControllerBase
         });
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] SavedParticularCreateDto dto)
+    {
+        var name = dto.Particular?.Trim() ?? "";
+        var unit = dto.DefaultUnit?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(name)) return BadRequest("Product name cannot be empty");
+        if (string.IsNullOrWhiteSpace(unit)) return BadRequest("Product unit cannot be empty");
+
+        var product = await _db.SavedParticulars.FindAsync(id);
+        if (product == null) return NotFound();
+        var duplicate = await _db.SavedParticulars.AnyAsync(p => p.Id != id && p.Particular.ToLower() == name.ToLower());
+        if (duplicate) return Conflict("A product with this name already exists");
+
+        product.Particular = name;
+        product.DefaultUnit = unit;
+        product.DefaultRate = dto.DefaultRate;
+        await _db.SaveChangesAsync();
+        return Ok(new SavedParticularDto
+        {
+            Id = product.Id,
+            Particular = product.Particular,
+            DefaultUnit = product.DefaultUnit,
+            DefaultRate = product.DefaultRate,
+            UsageCount = product.UsageCount,
+            LastUsedAt = product.LastUsedAt
+        });
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

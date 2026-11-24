@@ -89,6 +89,7 @@ export interface Quotation {
   createdAt: string;
   remarks: string;
   advancePayment: number;
+  paymentStatus: string;
   advancePaymentDate: string | null;
   discountType?: 'percent' | 'flat' | string;
   discountValue?: number;
@@ -103,7 +104,6 @@ export interface Quotation {
   totalAdvance: number;
   totalBalance: number;
   quotationStatus: string;
-  paymentStatus: string;
 }
 
 export interface Product {

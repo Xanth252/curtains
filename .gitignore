@@ -37,6 +37,14 @@ TestResults/
 *.sqlite
 *.sqlite3
 
+# SQLite WAL/SHM sidecar files
+*.db-shm
+*.db-wal
+
+# Backup & patch files
+*.patch
+*.zip
+
 # Local / Scratch directories
 scratch/
 Library/

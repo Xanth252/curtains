@@ -12,7 +12,7 @@ import { Product } from '../../models/models';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, HeaderComponent],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper area-orders">
       <app-header />
       <main class="main-content">
 
